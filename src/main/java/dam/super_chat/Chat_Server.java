@@ -108,10 +108,24 @@ public class Chat_Server {
     }
 
     public String identificarHost(SocketAddress IPCliente) {
-        String cliente = IPCliente.toString();
+        String client = IPCliente.toString();
 
-        //TODO-------------------------------------------------------------------------------------------<<<<<<
-        return cliente;
+        // Buscamos la posición del tercer punto
+        int puntos = 0;
+        int pos3punto = 0;
+        int i = 0;
+        while(puntos<3) {
+            if (client.charAt(i) == '.') {
+                puntos++;
+                pos3punto = i;
+            }
+            i ++;
+        }
+        // Buscamos la posición de los dos puntos
+        int posDosPuntos = client.indexOf(":");
+        client = client.substring(pos3punto+1,posDosPuntos);
+        
+        return client;
     }
 
     public static void main(String[] args) {
@@ -123,7 +137,7 @@ public class Chat_Server {
 
             do {
                 SocketAddress IPCliente = server.start();
-                String host = server.identificarHost(IPCliente); //No lo entiendo------------------------<<<<<<
+                String host = server.identificarHost(IPCliente);
                 
                 // Hora a la que se produce la interacción
                 LocalDateTime horaLocal = LocalDateTime.now();
