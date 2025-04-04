@@ -14,6 +14,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  *
@@ -39,14 +40,14 @@ public class Chat_Server {
 
     // Espera conexiones y devuelve la dirección del cliente
     public SocketAddress start() throws IOException {
-        //System.out.println(" (Servidor) Esperando conexiones...");
+        System.out.println(" (Servidor) Esperando conexiones...");
         socket = serverSocket.accept(); // Queda a la espera de una conexion
         is = socket.getInputStream();   // Abre flujos de lectura
         os = socket.getOutputStream();  // Abre flujos de escritura
         abrirCanalesDeTexto();          // Abre los canales de texto
-        SocketAddress sa = socket.getRemoteSocketAddress(); // Recibe la dirección IP del cliente
-        System.out.println(" (Servidor) Conexión establecida con cliente " + sa);
-        return sa;
+        SocketAddress IPCliente = socket.getRemoteSocketAddress(); // Recibe la dirección IP del cliente
+        System.out.println(" (Servidor) Conexión establecida con cliente " + IPCliente);
+        return IPCliente;
     }
 
     // Cierra todo
@@ -127,6 +128,11 @@ public class Chat_Server {
         
         return client;
     }
+    
+    public String calcularHoraLocal() {
+        String horaLocal = LocalDateTime.now().format(DateTimeFormatter.ISO_TIME); // Esto devuelve hh:mm:ss.msmsmsms
+        return horaLocal;
+    }
 
     public static void main(String[] args) {
         String msg;
@@ -140,19 +146,21 @@ public class Chat_Server {
                 String host = server.identificarHost(IPCliente);
                 
                 // Hora a la que se produce la interacción
-                LocalDateTime horaLocal = LocalDateTime.now();
-                int horas = horaLocal.getHour();
-                int minutos = horaLocal.getMinute();
-                int segundos = horaLocal.getSecond();
+                String horaLocal = server.calcularHoraLocal();
+                System.out.println(horaLocal);
+                //int horas = horaLocal.getHour();
+                //int minutos = horaLocal.getMinute();
+                //int segundos = horaLocal.getSecond();
                 
                 // Recepción del mensaje del cliente
                 msg = server.leerMensajeDeTexto();
-                String salida = horas + ":" + minutos + ":" + segundos + " - Host " + host + ": " + msg; // Salida o entrada?
-                System.out.println(salida);
-                server.guardarMensajeDeTexto(salida);
+                //String salida = horas + ":" + minutos + ":" + segundos + " - Host " + host + ": " + msg; // Salida o entrada?
+                //System.out.println(salida);
+                //server.guardarMensajeDeTexto(salida);
 
                 //  Confirmación de recepción del mensaje al cliente
-                server.enviarMensajeDeTexto("ACK " + horas + ":" + minutos + ":" + segundos);
+                //server.enviarMensajeDeTexto("ACK " + horas + ":" + minutos + ":" + segundos);
+                server.enviarMensajeDeTexto(msg);
             } while (!msg.equals("close"));
 
             // Cierre de todo
