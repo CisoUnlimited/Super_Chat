@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Scanner;
 
 /**
  *
@@ -18,11 +19,12 @@ import java.net.Socket;
  */
 public class Chat_Client_Test {
 
-    private String serverIP;
-    private int serverPort;
+    private final String serverIP;
+    private final int serverPort;
     private Socket socket;
     private InputStream is;
     private OutputStream os;
+    private String username;
 
     // Objetos para envío de cadenas
     private InputStreamReader isr;
@@ -34,57 +36,61 @@ public class Chat_Client_Test {
         this.serverPort = serverPort;
     }
 
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    
     public void start() throws IOException {
-        System.out.println(" (Cliente) Estableciendo conexión...");
+        //System.out.println(" (Cliente) Estableciendo conexión...");
         socket = new Socket(serverIP, serverPort);
         is = socket.getInputStream();
         os = socket.getOutputStream();
         abrirCanalesDeTexto();
-        System.out.println(" (Cliente) Conexión establecida.");
+        //System.out.println(" (Cliente) Conexión establecida.");
     }
 
     public void stop() throws IOException {
-        System.out.println(" (Cliente) Cerrando conexiones...");
+        //System.out.println(" (Cliente) Cerrando conexiones...");
         cerrarCanalesDeTexto();
         is.close();
         os.close();
         socket.close();
-        System.out.println(" (Cliente) Conexiones cerradas.");
+        //System.out.println(" (Cliente) Conexiones cerradas.");
     }
 
     public void abrirCanalesDeTexto() {
-        System.out.println(" (Cliente) Abriendo canales de texto...");
+        //System.out.println(" (Cliente) Abriendo canales de texto...");
         // Canales de lectura
         isr = new InputStreamReader(is);
         br = new BufferedReader(isr);
         // Canales de escritura
         pw = new PrintWriter(os, true);
-        System.out.println(" (Cliente) Canales de texto abiertos.");
+        //System.out.println(" (Cliente) Canales de texto abiertos.");
     }
 
     public void cerrarCanalesDeTexto() throws IOException {
-        System.out.println(" (Cliente) Cerrando canales de texto...");
+        //System.out.println(" (Cliente) Cerrando canales de texto...");
         // Canales de lectura
         br.close();
         isr.close();
         // Canales de escritura
         pw.close();
-        System.out.println(" (Cliente) Canales de texto cerrados.");
+        //System.out.println(" (Cliente) Canales de texto cerrados.");
     }
 
     public String leerMensajeTexto() throws IOException {
-        System.out.println(" (Cliente) Leyendo mensaje...");
+        //System.out.println(" (Cliente) Leyendo mensaje...");
         String msg = br.readLine();
-        System.out.println(" (Cliente) Mensaje leído.");
+        //System.out.println(" (Cliente) Mensaje leído.");
         return msg;
     }
 
     public void enviarMensajeTexto(String msg) {
-        System.out.println(" (Cliente) Enviando mensaje...");
+        //System.out.println(" (Cliente) Enviando mensaje...");
         pw.println(msg);
-        System.out.println(" (Cliente) Mensaje enviado.");
+        //System.out.println(" (Cliente) Mensaje enviado.");
     }
-
+    
     public static void main(String[] args) {
         String msg;
 
@@ -93,19 +99,19 @@ public class Chat_Client_Test {
             Chat_Client_Test client = new Chat_Client_Test("10.208.6.1", 50000);
             // Abrimos la comunicación
             client.start();
+            String userRequest = client.leerMensajeTexto();
+            System.out.println(" (Servidor) " + userRequest);
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            client.setUsername(br.readLine());
+            client.enviarMensajeTexto(client.username);
             do {
-
-                // Enviar mensajes al servidor
-                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-
                 System.out.println("Mensaje a enviar (END para terminar): ");
                 msg = br.readLine();
                 client.enviarMensajeTexto(msg);
 
                 // Recepción de la confirmación
                 String msgRecibido = client.leerMensajeTexto();
-                System.out.println(" (Servidor) " + msgRecibido);
-
+                System.out.println( client.username + ": " + msgRecibido);
             } while (!msg.equals("END"));
             client.stop();
         } catch (IOException e) {

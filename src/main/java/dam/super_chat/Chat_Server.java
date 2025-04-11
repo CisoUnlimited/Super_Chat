@@ -15,6 +15,7 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Scanner;
 
 /**
  *
@@ -46,6 +47,7 @@ public class Chat_Server {
         os = socket.getOutputStream();  // Abre flujos de escritura
         abrirCanalesDeTexto();          // Abre los canales de texto
         SocketAddress IPCliente = socket.getRemoteSocketAddress(); // Recibe la dirección IP del cliente
+        String userCliente = identificarHost();
         System.out.println(calcularHoraLocal() + " (Servidor) Conexión establecida con cliente " + IPCliente);
         return IPCliente;
     }
@@ -85,20 +87,20 @@ public class Chat_Server {
 
     // Devuelve el mensaje enviado por el cliente como String
     public String leerMensajeDeTexto() throws IOException {
-        System.out.println(" (Servidor) Leyendo mensaje...");
+        //System.out.println(" (Servidor) Leyendo mensaje...");
         String msg = br.readLine();
         if (msg.isEmpty()) {
             msg = "Cliente desconectado.";
         }
-        System.out.println(" (Servidor) Mensaje leído.");
+        //System.out.println(" (Servidor) Mensaje leído.");
         return msg;
     }
 
     // Envía un mensaje al cliente mediante PrintWriter(OutPutStream)
     public void enviarMensajeDeTexto(String msg) {
-        System.out.println(" (Servidor) Eviando mensaje...");
+        //System.out.println(" (Servidor) Eviando mensaje...");
         pw.println(msg);
-        System.out.println(" (Servidor) Mensaje enviado.");
+        //System.out.println(" (Servidor) Mensaje enviado.");
     }
 
     public void guardarMensajeDeTexto(String msg) {
@@ -111,13 +113,16 @@ public class Chat_Server {
         }
     }
 
-    public String identificarHost(SocketAddress IPCliente) {
-        // TODO Crear un metodo que me permita identificar los clientes por un nombre de usuario
-        return null;
+    public String identificarHost() throws IOException {
+        // Le pedimos al cliente que introduzca su nombre de usuario
+        enviarMensajeDeTexto("Introduce tu nombre de usuario: ");
+        // Leemos la respuesta del cliente
+        String username = leerMensajeDeTexto();
+        return username;
     }
 
     public String calcularHoraLocal() {
-        String horaLocal = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy - HH:mm:ss")); // Esto devuelve hh:mm:ss.msmsmsms
+        String horaLocal = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy - HH:mm:ss"));
         return horaLocal;
     }
 
@@ -129,7 +134,6 @@ public class Chat_Server {
             System.out.println(server.calcularHoraLocal() + " (Servidor) Sala abierta.");
 
             SocketAddress IPCliente = server.start();
-            String host = server.identificarHost(IPCliente);
 
             do {
                 // Recepción del mensaje del cliente
