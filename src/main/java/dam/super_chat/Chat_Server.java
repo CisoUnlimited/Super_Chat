@@ -40,24 +40,24 @@ public class Chat_Server {
 
     // Espera conexiones y devuelve la dirección del cliente
     public SocketAddress start() throws IOException {
-        System.out.println(" (Servidor) Esperando conexiones...");
+        System.out.println(calcularHoraLocal() + " (Servidor) Esperando conexiones...");
         socket = serverSocket.accept(); // Queda a la espera de una conexion
         is = socket.getInputStream();   // Abre flujos de lectura
         os = socket.getOutputStream();  // Abre flujos de escritura
         abrirCanalesDeTexto();          // Abre los canales de texto
         SocketAddress IPCliente = socket.getRemoteSocketAddress(); // Recibe la dirección IP del cliente
-        System.out.println(" (Servidor) Conexión establecida con cliente " + IPCliente);
+        System.out.println(calcularHoraLocal() + " (Servidor) Conexión establecida con cliente " + IPCliente);
         return IPCliente;
     }
 
     // Cierra todo
     public void stop() throws IOException {
         //System.out.println(" (Servidor) Cerrando conexiones...");
-        cerrarCanalesDeTexto(); // Cierra los canales de texto
-        is.close();             // Cierra flujos de lectura
-        os.close();             // Cierra flujos de escritura
-        socket.close();         // Cierra el Socket
-        serverSocket.close();   // Cierra el ServerSocket
+        cerrarCanalesDeTexto();
+        is.close();
+        os.close();
+        socket.close();
+        serverSocket.close();
         //System.out.println(" (Servidor) Conexiones cerradas.");
     }
 
@@ -86,7 +86,10 @@ public class Chat_Server {
     // Devuelve el mensaje enviado por el cliente como String
     public String leerMensajeDeTexto() throws IOException {
         //System.out.println(" (Servidor) Leyendo mensaje...");
-        String msg = br.readLine();
+        String msg = "Cliente desconectado.";
+        if (!(br.readLine().isEmpty())) {
+            msg = br.readLine();
+        }
         //System.out.println(" (Servidor) Mensaje leído.");
         return msg;
     }
@@ -109,28 +112,12 @@ public class Chat_Server {
     }
 
     public String identificarHost(SocketAddress IPCliente) {
-        String client = IPCliente.toString();
-
-        // Buscamos la posición del tercer punto
-        int puntos = 0;
-        int pos3punto = 0;
-        int i = 0;
-        while(puntos<3) {
-            if (client.charAt(i) == '.') {
-                puntos++;
-                pos3punto = i;
-            }
-            i ++;
-        }
-        // Buscamos la posición de los dos puntos
-        int posDosPuntos = client.indexOf(":");
-        client = client.substring(pos3punto+1,posDosPuntos);
-        
-        return client;
+        // TODO Crear un metodo que me permita identificar los clientes por un nombre de usuario
+        return null;
     }
-    
+
     public String calcularHoraLocal() {
-        String horaLocal = LocalDateTime.now().format(DateTimeFormatter.ISO_TIME); // Esto devuelve hh:mm:ss.msmsmsms
+        String horaLocal = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy - HH:mm:ss")); // Esto devuelve hh:mm:ss.msmsmsms
         return horaLocal;
     }
 
@@ -139,33 +126,23 @@ public class Chat_Server {
         try {
             // Inicio
             Chat_Server server = new Chat_Server(50000);
-            System.out.println("Sala abierta.");
+            System.out.println(server.calcularHoraLocal() + " (Servidor) Sala abierta.");
+
+            SocketAddress IPCliente = server.start();
+            String host = server.identificarHost(IPCliente);
 
             do {
-                SocketAddress IPCliente = server.start();
-                String host = server.identificarHost(IPCliente);
-                
-                // Hora a la que se produce la interacción
-                String horaLocal = server.calcularHoraLocal();
-                System.out.println(horaLocal);
-                //int horas = horaLocal.getHour();
-                //int minutos = horaLocal.getMinute();
-                //int segundos = horaLocal.getSecond();
-                
                 // Recepción del mensaje del cliente
                 msg = server.leerMensajeDeTexto();
-                //String salida = horas + ":" + minutos + ":" + segundos + " - Host " + host + ": " + msg; // Salida o entrada?
-                //System.out.println(salida);
                 //server.guardarMensajeDeTexto(salida);
 
                 //  Confirmación de recepción del mensaje al cliente
-                //server.enviarMensajeDeTexto("ACK " + horas + ":" + minutos + ":" + segundos);
-                server.enviarMensajeDeTexto(msg);
-            } while (!msg.equals("close"));
+                server.enviarMensajeDeTexto(server.calcularHoraLocal() + " " + msg);
+            } while (!msg.equals("END"));
 
             // Cierre de todo
             server.stop();
-            System.out.println("Sala cerrada.");
+            System.out.println(server.calcularHoraLocal() + " (Servidor) Sala cerrada.");
         } catch (IOException e) {
             e.printStackTrace();
         }
