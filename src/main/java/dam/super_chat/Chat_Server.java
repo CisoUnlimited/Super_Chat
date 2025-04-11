@@ -85,20 +85,20 @@ public class Chat_Server {
 
     // Devuelve el mensaje enviado por el cliente como String
     public String leerMensajeDeTexto() throws IOException {
-        //System.out.println(" (Servidor) Leyendo mensaje...");
-        String msg = "Cliente desconectado.";
-        if (!(br.readLine().isEmpty())) {
-            msg = br.readLine();
+        System.out.println(" (Servidor) Leyendo mensaje...");
+        String msg = br.readLine();
+        if (msg.isEmpty()) {
+            msg = "Cliente desconectado.";
         }
-        //System.out.println(" (Servidor) Mensaje leído.");
+        System.out.println(" (Servidor) Mensaje leído.");
         return msg;
     }
 
     // Envía un mensaje al cliente mediante PrintWriter(OutPutStream)
     public void enviarMensajeDeTexto(String msg) {
-        //System.out.println(" (Servidor) Eviando mensaje...");
+        System.out.println(" (Servidor) Eviando mensaje...");
         pw.println(msg);
-        //System.out.println(" (Servidor) Mensaje enviado.");
+        System.out.println(" (Servidor) Mensaje enviado.");
     }
 
     public void guardarMensajeDeTexto(String msg) {
