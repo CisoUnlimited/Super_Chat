@@ -24,7 +24,7 @@ import java.util.Scanner;
 public class Chat_Server {
 
     // Objetos para la conexion
-    private ServerSocket serverSocket;
+    private final ServerSocket serverSocket;
     private Socket socket;
     private InputStream is;
     private OutputStream os;
