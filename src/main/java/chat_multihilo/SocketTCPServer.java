@@ -48,6 +48,7 @@ public class SocketTCPServer {
             clients.add(clientHandler); // Añade el cliente a la lista global
             clientHandler.start(); // Inicia el hilo de gestión del cliente
         }
+        
     }
 
     /**
