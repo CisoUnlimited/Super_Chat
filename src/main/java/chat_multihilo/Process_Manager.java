@@ -7,156 +7,155 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
 
-/**
- * Clase que gestiona la comunicación con un cliente específico en el chat.
- * Cada instancia de esta clase se ejecuta en su propio hilo, permitiendo una
- * comunicación simultánea con múltiples clientes.
- * 
- * Al iniciar, se solicita al cliente que ingrese un nombre, el cual será utilizado
- * para identificar los mensajes enviados por ese cliente.
- * 
- * Los mensajes que recibe el cliente se reenvían a todos los demás clientes
- * conectados mediante el método estático {@link SocketTCPServer#broadcast(String, Process_Manager)}.
- * 
- * Además, proporciona el método {@link #sendMessageToThisClient(String)} para enviar
- * mensajes directos a este cliente en particular.
- * 
- * El ciclo de vida del hilo de este proceso es el siguiente:
- * - Solicita el nombre del cliente al conectarse.
- * - Anuncia su entrada al chat.
- * - Escucha los mensajes del cliente y los difunde a los demás.
- * - Maneja la desconexión y notifica al resto de los usuarios.
- * 
- * @author Ciso
- */
 public class Process_Manager extends Thread {
 
-    /**
-     * Socket asociado a este cliente.
-     */
     private final Socket socket;
 
-    /**
-     * Flujo de entrada para leer mensajes del cliente.
-     */
     private BufferedReader in;
 
-    /**
-     * Flujo de salida para enviar mensajes al cliente.
-     */
     private PrintWriter out;
 
-    /**
-     * Nombre del cliente, proporcionado al conectarse.
-     */
     private String user;
 
-    /**
-    * Constructor que recibe el socket del cliente y asigna un nombre temporal
-    * basado en el puerto del socket. Este nombre es utilizado hasta que el cliente
-    * ingrese su propio nombre.
-    *
-    * @param socket Socket conectado al cliente.
-    */
+    private String currentRoom;
+
     public Process_Manager(Socket socket) {
         this.socket = socket;
         this.user = "Anónimo#" + this.socket.getPort();
     }
 
-    /**
-     * Envía un mensaje de texto al cliente asociado a este hilo.
-     *
-     * @param msg Mensaje a enviar.
-     */
-    public void sendMessageToThisClient(String msg) {
-        if (out != null) {
-            out.println(msg);
-        }
-    }
-
-    /**
-     * Envía un mensaje de texto a todos los clientes conectados, excepto al
-     * cliente que lo envió.
-     *
-     * @param msg El mensaje a enviar a todos los clientes.
-     * @param pm El cliente que envió el mensaje (no recibirá el mensaje).
-     */
-    public void sendMessageToAllClients(String msg, Process_Manager pm) {
-        SocketTCPServer.broadcast(msg, pm);
-    }
-
-    /**
-     * Método principal del hilo que gestiona el flujo de la comunicación con el cliente.
-     * Este método realiza lo siguiente:
-     * - Solicita el nombre del cliente.
-     * - Anuncia su entrada al chat.
-     * - Escucha los mensajes del cliente y los reenvía a los demás clientes.
-     * - Maneja la desconexión del cliente y notifica al resto.
-     */
     @Override
     public void run() {
         try {
             openStreams();
-
             identifyUser();
+            sendMessageToThisClient("\n [Servidor] Bienvenido, " + user + ".");
+            showCommands();
+            sendMessageToThisClient(" [Servidor] Para empezar a usar el chat, debes seleccionar una sala escribiendo '/join nombreDeSala'");
+            showRooms();
 
-            // Notifica la bienvenida al cliente
-            sendMessageToThisClient("Bienvenido al chat, " + user + ". \nPuedes salir en cualquier momento escribiendo '/salir'.");
-            sendMessageToAllClients(" [Servidor]: " + user + " se ha unido al chat.", this);
-
-            // Escucha los mensajes enviados por el cliente y los reenvía a todos
             String msg;
-            while ((msg = in.readLine()) != null && !msg.equalsIgnoreCase("/salir")) {
-                sendMessageToThisClient(user + ": " + msg);
-                sendMessageToAllClients(user + ": " + msg, this);
+            while ((msg = in.readLine()) != null) {
+                inspectMsg(msg);
             }
+
         } catch (SocketException e) {
             System.err.println(" [Servidor] Un cliente se desconectó de forma inesperada: " + user);
         } catch (IOException e) {
-            System.err.println("Error con cliente " + user + ": " + e.getMessage());
+            System.err.println(" [Servidor] Error con cliente " + user + ": " + e.getMessage());
         } finally {
             try {
-                SocketTCPServer.clients.remove(this);
-                sendMessageToAllClients(" [Servidor]: " + user + " ha salido del chat.", this);
+                SocketTCPServer.removeClientFromRoom(currentRoom, this);
+                sendMessageToRoom(" [Servidor]: " + user + " ha salido de la sala.");
                 closeStreams();
                 socket.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (NullPointerException e) {
+
             }
         }
     }
 
-    /**
-     * Solicita al cliente que ingrese su nombre. Si el cliente no ingresa un
-     * nombre o se desconecta, se asigna un nombre por defecto.
-     *
-     * @throws IOException Si ocurre un error al leer el nombre del cliente.
-     */
     private void identifyUser() throws IOException {
-        sendMessageToThisClient("Introduce tu nombre: ");
+        sendMessageToThisClient(" [Servidor] Introduce tu nombre: ");
         user = in.readLine();
     }
 
-    /**
-     * Cierra los flujos de entrada y salida utilizados para la comunicación
-     * con el cliente.
-     *
-     * @throws IOException Si ocurre un error al cerrar los flujos.
-     */
+    private void inspectMsg(String msg) throws IOException {
+        if (msg.startsWith("/")) {
+            runCommand(msg.substring(1));
+        } else if (currentRoom != null) {
+            sendMessageToThisClient(user + ": " + msg);
+            sendMessageToRoom(user + ": " + msg);
+        }
+    }
+
+    public void sendMessageToThisClient(String msg) {
+        if (out != null) {
+            out.println(msg);
+        } else {
+            System.err.println(" [Servidor] Error al enviar mensaje. Salida no disponible.");
+        }
+    }
+
+    public void sendMessageToRoom(String msg) {
+        SocketTCPServer.broadcastToRoom(currentRoom, msg, this);
+    }
+
+    private void runCommand(String command) throws IOException {
+        String room = "";
+        if (command.startsWith("join ")) {
+            room = command.substring(5);
+            command = "join";
+        }
+        switch (command) {
+            case "help":
+                showCommands();
+                break;
+            case "rooms":
+                showRooms();
+                sendMessageToThisClient(" [Servidor] Recuerda, '/join nombreDeSala' para unirte.");
+                break;
+            case "join":
+                joinRoom(room);
+                break;
+            case "exit":
+                exit();
+                break;
+            default:
+                out.println(" [Servidor] '/" + command + "' no es un comando válido.");
+                showCommands();
+                break;
+        }
+    }
+
+    private void showCommands() {
+        sendMessageToThisClient(" [Servidor] Comandos disponibles:");
+        sendMessageToThisClient("   /help - Muestra esta guía");
+        sendMessageToThisClient("   /rooms - Muestra las salas disponibles");
+        sendMessageToThisClient("   /join [nombre de la sala] - Permite seleccionar y unirse a una sala");
+        sendMessageToThisClient("   /exit - Salir del chat");
+    }
+
+    private void showRooms() {
+        sendMessageToThisClient(" [Servidor] Salas disponibles:");
+        sendMessageToThisClient(SocketTCPServer.getAvailableRooms());
+    }
+
+    private void joinRoom(String room) throws IOException {
+        if (SocketTCPServer.roomExists(room)) {
+            currentRoom = room;
+            SocketTCPServer.addClientToRoom(currentRoom, this);
+            sendMessageToThisClient(" [Servidor] Te has unido a la sala: " + currentRoom);
+            SocketTCPServer.broadcastToRoom(currentRoom, " [Servidor] " + this.user + " se ha unido a la sala.", this);
+        } else {
+            sendMessageToThisClient(" [Servidor] La sala '" + room + "' no existe. Por favor, elige otra.");
+            showRooms();
+        }
+    }
+
+    private void exit() {
+        if (currentRoom != null) {
+            SocketTCPServer.removeClientFromRoom(currentRoom, this);
+        }
+        sendMessageToThisClient(" [Servidor] Gracias por usar el chat, ¡hasta pronto!");
+        try {
+            closeStreams();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void openStreams() throws IOException {
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+    }
+
     private void closeStreams() throws IOException {
         in.close();
         out.close();
-    }
-
-    /**
-     * Abre los flujos de entrada y salida para la comunicación con el cliente.
-     *
-     * @throws IOException Si ocurre un error al abrir los flujos.
-     */
-    private void openStreams() throws IOException {
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-        out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
     }
 }
