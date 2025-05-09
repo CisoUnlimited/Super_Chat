@@ -8,12 +8,40 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Clase que representa un servidor TCP multihilo para un sistema de chat.
+ * Escucha conexiones entrantes en un puerto determinado y gestiona múltiples
+ * salas de chat. Cada cliente es gestionado por una instancia de
+ * {@code Process_Manager} en un hilo separado.
+ *
+ * Las salas de chat se almacenan en un mapa concurrente para permitir acceso
+ * seguro desde múltiples hilos.
+ *
+ * Salas por defecto: general, PSPRO, DEINT, PMDMO, ACDAT.
+ *
+ * @author Ciso
+ */
 public final class SocketTCPServer {
 
+    /**
+     * Socket del servidor para aceptar conexiones entrantes.
+     */
     private final ServerSocket serverSocket;
 
+    /**
+     * Mapa que asocia nombres de salas con listas de clientes conectados a cada
+     * sala.
+     */
     public static final Map<String, List<Process_Manager>> chatRooms = new ConcurrentHashMap<>();
 
+    /**
+     * Constructor del servidor que inicia la escucha en el puerto especificado,
+     * crea las salas predeterminadas, acepta conexiones de clientes y
+     * posteriormente cierra el servidor.
+     *
+     * @param port Puerto en el que se iniciará el servidor.
+     * @throws IOException si ocurre un error al abrir el socket del servidor.
+     */
     public SocketTCPServer(int port) throws IOException {
         serverSocket = new ServerSocket(port);
         createRooms();
@@ -21,6 +49,9 @@ public final class SocketTCPServer {
         stop();
     }
 
+    /**
+     * Crea las salas de chat predeterminadas.
+     */
     private void createRooms() {
         chatRooms.put("general", new CopyOnWriteArrayList<>());
         chatRooms.put("PSPRO", new CopyOnWriteArrayList<>());
@@ -29,6 +60,13 @@ public final class SocketTCPServer {
         chatRooms.put("ACDAT", new CopyOnWriteArrayList<>());
     }
 
+    /**
+     * Acepta conexiones de clientes de manera indefinida. Cada cliente se
+     * gestiona en un nuevo hilo mediante una instancia de
+     * {@code Process_Manager}.
+     *
+     * @throws IOException si ocurre un error al aceptar una conexión.
+     */
     private void acceptClientConnections() throws IOException {
         System.out.println(" [Servidor] A la espera de conexiones.");
         while (true) {
@@ -47,15 +85,32 @@ public final class SocketTCPServer {
         }
     }
 
+    /**
+     * Cierra el socket del servidor, deteniendo así la recepción de nuevas
+     * conexiones.
+     *
+     * @throws IOException si ocurre un error al cerrar el socket.
+     */
     public void stop() throws IOException {
         System.out.println(" [Servidor] Cerrando todo.");
         serverSocket.close();
     }
 
+    /**
+     * Verifica si una sala de chat con el nombre dado existe.
+     *
+     * @param room Nombre de la sala.
+     * @return {@code true} si la sala existe; {@code false} en caso contrario.
+     */
     public static boolean roomExists(String room) {
         return chatRooms.containsKey(room);
     }
 
+    /**
+     * Devuelve una cadena con la lista de todas las salas disponibles.
+     *
+     * @return String con los nombres de las salas o un mensaje si no hay salas.
+     */
     public static String getAvailableRooms() {
         if (chatRooms.isEmpty()) {
             return " [Servidor] No hay salas disponibles.";
@@ -65,10 +120,22 @@ public final class SocketTCPServer {
         return roomList.toString();
     }
 
+    /**
+     * Añade un cliente a una sala. Si la sala no existe, se crea.
+     *
+     * @param roomName Nombre de la sala.
+     * @param client Cliente a añadir.
+     */
     public static void addClientToRoom(String roomName, Process_Manager client) {
         chatRooms.computeIfAbsent(roomName, k -> new CopyOnWriteArrayList<>()).add(client);
     }
 
+    /**
+     * Elimina un cliente de una sala.
+     *
+     * @param roomName Nombre de la sala.
+     * @param client Cliente a eliminar.
+     */
     public static void removeClientFromRoom(String roomName, Process_Manager client) {
         List<Process_Manager> roomClients = chatRooms.get(roomName);
         if (roomClients != null) {
@@ -76,6 +143,13 @@ public final class SocketTCPServer {
         }
     }
 
+    /**
+     * Envía un mensaje a todos los clientes de una sala, excepto al remitente.
+     *
+     * @param roomName Nombre de la sala.
+     * @param msg Mensaje a enviar.
+     * @param sender Cliente que envía el mensaje.
+     */
     public static void broadcastToRoom(String roomName, String msg, Process_Manager sender) {
         List<Process_Manager> roomClients = chatRooms.get(roomName);
         if (roomName != null) {
@@ -87,6 +161,11 @@ public final class SocketTCPServer {
         }
     }
 
+    /**
+     * Método principal que inicia el servidor en el puerto 50000.
+     *
+     * @param args Argumentos de la línea de comandos (no usados).
+     */
     public static void main(String[] args) {
         try {
             SocketTCPServer server = new SocketTCPServer(50000);
