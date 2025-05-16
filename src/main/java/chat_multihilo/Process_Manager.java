@@ -161,7 +161,7 @@ public class Process_Manager extends Thread {
                 break;
             case "rooms":
                 showRooms();
-                sendMessageToThisClient(" [Servidor] Recuerda, '/join nombreDeSala' para unirte.");
+                sendMessageToThisClient(" [Servidor] Recuerda, '/join [nombre de la sala]' para unirte.");
                 break;
             case "join":
                 joinRoom(room);
